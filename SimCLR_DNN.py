@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,18 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
-from gaussian_blur import GaussianBlur
 from torchvision import datasets
-
-
-# In[2]:
-
-
-torch.cuda.empty_cache()
-
-
-# In[3]:
-
 
 class DNN(nn.Module):
     def __init__(self):
@@ -39,11 +22,7 @@ class DNN(nn.Module):
         h=self.l2(self.l1(x.view(-1, 3*75*70)))
         x=F.relu(h)
         x=self.l3(x)
-        return h, x # h:1*512, x:1*256 
-
-
-# In[4]:
-
+        return h, x 
 
 class DataTransform(object):
     def __init__(self, transform):
@@ -53,12 +32,8 @@ class DataTransform(object):
         xi=self.transform(sample)
         xj=self.transform(sample)
         return xi, xj
-
-
-# In[5]:
-
-
-class NTXentLoss(torch.nn.Module):
+    
+class Loss(torch.nn.Module):
     def __init__(self, device, batch_size, temperature):
         super(NTXentLoss, self).__init__()
         self.batch_size=batch_size
@@ -111,11 +86,7 @@ class NTXentLoss(torch.nn.Module):
         labels=torch.zeros(2*self.batch_size).to(self.device).long()
         loss=self.criterion(logits, labels)
         return loss/(2*self.batch_size)
-
-
-# In[6]:
-
-
+    
 batch_size=32
 epoch=1000
 data_transforms=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5),
@@ -127,11 +98,7 @@ model=DNN()
 model.cuda()
 optimizer=optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-loss_function=NTXentLoss(device, batch_size, 0.5)
-
-
-# In[7]:
-
+loss_function=Loss(device, batch_size, 0.5)
 
 plot_loss=[]
 for i in tqdm(range(epoch)):
@@ -151,22 +118,5 @@ for i in tqdm(range(epoch)):
         running_loss+=loss
     plot_loss.append(running_loss)
 
-
-# In[8]:
-
-
 plt.plot(plot_loss)
 plt.show()
-
-
-# In[9]:
-
-
-#torch.save(model.state_dict(), './DNN(1000epoch)_1.pth')
-
-
-# In[ ]:
-
-
-
-
