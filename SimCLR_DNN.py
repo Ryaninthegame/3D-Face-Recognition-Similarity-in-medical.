@@ -33,7 +33,7 @@ class DataTransform(object):
         xj=self.transform(sample)
         return xi, xj
     
-class Loss(torch.nn.Module):
+class NTXentLoss(torch.nn.Module):
     def __init__(self, device, batch_size, temperature):
         super(NTXentLoss, self).__init__()
         self.batch_size=batch_size
@@ -98,7 +98,7 @@ model=DNN()
 model.cuda()
 optimizer=optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-loss_function=Loss(device, batch_size, 0.5)
+loss_function=NTXentLoss(device, batch_size, 0.5)
 
 plot_loss=[]
 for i in tqdm(range(epoch)):
