@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets
 
+torch.cuda.empty_cache()
+
 class DNN(nn.Module):
     def __init__(self):
         super(DNN, self).__init__()
@@ -22,8 +24,8 @@ class DNN(nn.Module):
         h=self.l2(self.l1(x.view(-1, 3*75*70)))
         x=F.relu(h)
         x=self.l3(x)
-        return h, x 
-
+        return h, x # h:1*512, x:1*256 
+    
 class DataTransform(object):
     def __init__(self, transform):
         self.transform=transform
@@ -32,7 +34,7 @@ class DataTransform(object):
         xi=self.transform(sample)
         xj=self.transform(sample)
         return xi, xj
-    
+
 class NTXentLoss(torch.nn.Module):
     def __init__(self, device, batch_size, temperature):
         super(NTXentLoss, self).__init__()
@@ -65,28 +67,18 @@ class NTXentLoss(torch.nn.Module):
         return v
 
     def forward(self, zis, zjs):
-        # print(zis.size()) : torch.Size([4, 256])
-        # print(zjs.size()) : torch.Size([4, 256])
-        representations=torch.cat([zjs, zis], dim=0) # 8*256
-        # print("representations:",representations.size())
-        similarity_matrix=self.similarity_function(representations, representations) # 8*8
-        #print(similarity_matrix.size())
-        l_pos=torch.diag(similarity_matrix, self.batch_size) # torch.Size([4])
-        #print(l_pos)
-        #print("l_pos:",l_pos.size())
-        r_pos=torch.diag(similarity_matrix, -self.batch_size) # torch.Size([4])
-        #print(r_pos)
-        #print("r_pos:",r_pos.size())
+        representations=torch.cat([zjs, zis], dim=0) 
+        similarity_matrix=self.similarity_function(representations, representations) 
+        l_pos=torch.diag(similarity_matrix, self.batch_size) 
+        r_pos=torch.diag(similarity_matrix, -self.batch_size) 
         positives=torch.cat([l_pos, r_pos]).view(2*self.batch_size, 1)
-        #print("positives:",positives)
         negatives=similarity_matrix[self.mask_samples_from_same_repr].view(2*self.batch_size, -1)
-        #print("negatives:",negatives)
         logits=torch.cat((positives, negatives), dim=1)
         logits/=self.temperature
         labels=torch.zeros(2*self.batch_size).to(self.device).long()
         loss=self.criterion(logits, labels)
         return loss/(2*self.batch_size)
-    
+
 batch_size=32
 epoch=1000
 data_transforms=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5),
@@ -104,8 +96,6 @@ plot_loss=[]
 for i in tqdm(range(epoch)):
     running_loss=0
     for (xis, xjs), _ in train_loader:
-        # print(xis.size()) : torch.Size([4, 3, 15, 14])
-        # print(xjs.size()) : torch.Size([4, 3, 15, 14])
         optimizer.zero_grad()
         ris, zis=model(xis.to(device))  
         rjs, zjs=model(xjs.to(device))  
