@@ -78,35 +78,35 @@ class NTXentLoss(torch.nn.Module):
         labels=torch.zeros(2*self.batch_size).to(self.device).long()
         loss=self.criterion(logits, labels)
         return loss/(2*self.batch_size)
+    
+if __name__=='__name__':
+    epoch, batch_size = 1000, 32
+    data_transforms=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.Resize((75,70), interpolation=2),
+                                        transforms.ToTensor()])
+    image_data=torchvision.datasets.ImageFolder(r'C:/Users/DART/Jupyter notebook/med/image_origin/',transform=DataTransform(data_transforms))
+    train_loader=DataLoader(image_data, batch_size=batch_size, drop_last=True, shuffle=False)
+    model=DNN()
+    model.cuda()
+    optimizer=optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    loss_function=NTXentLoss(device, batch_size, 0.5)
 
-batch_size=32
-epoch=1000
-data_transforms=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5),
-                                    transforms.Resize((75,70), interpolation=2),
-                                    transforms.ToTensor()])
-image_data=torchvision.datasets.ImageFolder(r'C:/Users/DART/Jupyter notebook/med/image_origin/',transform=DataTransform(data_transforms))
-train_loader=DataLoader(image_data, batch_size=batch_size, drop_last=True, shuffle=False)
-model=DNN()
-model.cuda()
-optimizer=optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-loss_function=NTXentLoss(device, batch_size, 0.5)
+    plot_loss=[]
+    for i in tqdm(range(epoch)):
+        running_loss=0
+        for (xis, xjs), _ in train_loader:
+            optimizer.zero_grad()
+            ris, zis=model(xis.to(device))  
+            rjs, zjs=model(xjs.to(device))  
+            zis=F.normalize(zis, dim=1)
+            zjs=F.normalize(zjs, dim=1)
 
-plot_loss=[]
-for i in tqdm(range(epoch)):
-    running_loss=0
-    for (xis, xjs), _ in train_loader:
-        optimizer.zero_grad()
-        ris, zis=model(xis.to(device))  
-        rjs, zjs=model(xjs.to(device))  
-        zis=F.normalize(zis, dim=1)
-        zjs=F.normalize(zjs, dim=1)
-        
-        loss=loss_function(zis, zjs)
-        loss.backward()
-        optimizer.step()
-        running_loss+=loss
-    plot_loss.append(running_loss)
+            loss=loss_function(zis, zjs)
+            loss.backward()
+            optimizer.step()
+            running_loss+=loss
+        plot_loss.append(running_loss)
 
-plt.plot(plot_loss)
-plt.show()
+    plt.plot(plot_loss)
+    plt.show()
